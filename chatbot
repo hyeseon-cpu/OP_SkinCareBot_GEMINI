@@ -1,0 +1,105 @@
+import streamlit as st
+import google.generativeai as genai
+import requests
+from bs4 import BeautifulSoup
+
+# Google Gemini API 설정
+YOUR_API_KEY = "yourAPIkey"  # 실제 API 키로 교체
+genai.configure(api_key=YOUR_API_KEY)
+
+# 시스템 메시지 (패르소나 적용)
+system_instruction = """
+당신은 피부 상태 진단 전문가입니다.
+사용자의 피부 고민과 현재 사용하는 화장품 등을 바탕으로
+맞춤형 스킨케어 팁과 제품을 추천해주세요.
+사용자에게 답변을 할 때, 질문을 하나씩 해서 사용자와 대화하세요.
+어느정도 사용자의 피부타입을 알고, 피부타입에 맞는 제품을 추천할 수 있을 때에는
+'대화를 종료하고 제품 추천해드릴게요'라는 메시지를 띄운 후, 제품 추천을 해주세요.
+'추천 제품'대신 '스킨케어 루틴 별 추천 성분'이라고 말하고, 옆에는 🫧 이 아이콘을, 
+'추가 팁'이라는 말 '대신 맞춤형 피부 관리 팁'이라고 말하고, 옆에는 💡 이 아이콘을 써줘. 
+"""
+model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=system_instruction)
+
+# Streamlit 앱 초기화
+st.title("SKINCARE BOT")
+st.write("피부 고민에 대해 이야기하고, 맞춤형 피부관리 팁과 성분을 추천받아보세요!")
+
+# 대화 세션 및 기록 관리
+if "chat_session" not in st.session_state:
+    st.session_state["chat_session"] = model.start_chat(history=[])
+
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []  # 사용자와 챗봇의 메시지 기록
+
+# 네이버 쇼핑 크롤링 함수
+def crawl_naver_shopping(keyword):
+    base_url = "https://search.shopping.naver.com/search/all"
+    params = {"query": keyword, "cat_id": "", "frm": "NVSHATC"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    response = requests.get(base_url, params=params, headers=headers)
+
+    if response.status_code != 200:
+        raise Exception(f"HTTP 요청 실패: 상태 코드 {response.status_code}")
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # 크롤링 결과 추출
+    products = []
+    items = soup.select(".basicList_item__2XT81")  # 네이버 쇼핑 결과 리스트 CSS 선택자
+    for item in items[:5]:  # 상위 5개 상품만 가져오기
+        try:
+            name = item.select_one(".basicList_title__3P9Q7").text.strip()
+            price = item.select_one(".price_num__2WUXn").text.strip()
+            link = item.select_one(".basicList_link__1MaTN")["href"]
+            products.append({"name": name, "price": price, "link": link})
+        except AttributeError:
+            continue  # 필요한 정보가 없으면 해당 아이템 건너뛰기
+
+    return products
+
+# 이전 대화 기록 표시
+for message in st.session_state["messages"]:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 사용자 입력 필드
+if prompt := st.chat_input("피부 고민을 입력하세요:"):
+    # 사용자 메시지 기록 및 표시
+    st.session_state["messages"].append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # 챗봇 응답 생성 및 표시
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        message_placeholder.markdown("...")  # 응답 대기 상태 표시
+
+        try:
+            # Google Gemini API로 응답 생성
+            response = st.session_state["chat_session"].send_message(prompt)
+            assistant_message = response.text  # 응답 텍스트 추출
+
+            # 챗봇 메시지 기록 및 표시
+            st.session_state["messages"].append({"role": "assistant", "content": assistant_message})
+            message_placeholder.markdown(assistant_message)
+
+            # 네이버 쇼핑 크롤링 실행
+            if "추천" in assistant_message:  # 추천 제품이 언급되면 크롤링 실행
+                st.write("🛍️ 네이버 쇼핑에서 추천 제품을 찾고 있습니다...")
+                try:
+                    products = crawl_naver_shopping(prompt)
+                    if products:
+                        st.write("**추천 제품:**")
+                        for product in products:
+                            st.markdown(f"- [{product['name']}]({product['link']}) - {product['price']}")
+                    else:
+                        st.write("❌ 관련 제품을 찾을 수 없습니다.")
+                except Exception as e:
+                    st.error(f"네이버 쇼핑 크롤링 중 오류 발생: {e}")
+        except Exception as e:
+            error_message = f"❌ 오류 발생: {e}"
+            st.session_state["messages"].append({"role": "assistant", "content": error_message})
+            message_placeholder.markdown(error_message)
