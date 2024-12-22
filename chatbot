@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 
 # Google Gemini API 설정
-YOUR_API_KEY = "yourAPIkey"  # 실제 API 키로 교체
+YOUR_API_KEY = "yourapi"  # 실제 API 키로 교체
 genai.configure(api_key=YOUR_API_KEY)
 
 # 시스템 메시지 (패르소나 적용)
@@ -14,7 +14,7 @@ system_instruction = """
 맞춤형 스킨케어 팁과 제품을 추천해주세요.
 사용자에게 답변을 할 때, 질문을 하나씩 해서 사용자와 대화하세요.
 어느정도 사용자의 피부타입을 알고, 피부타입에 맞는 제품을 추천할 수 있을 때에는
-'대화를 종료하고 제품 추천해드릴게요'라는 메시지를 띄운 후, 제품 추천을 해주세요.
+'피부타입 분석을 완료하였어요. 이제 맞춤형 성분과 관리 팁을 알려드릴게요'라는 메시지를 띄운 후, 제품 추천을 해주세요.
 '추천 제품'대신 '스킨케어 루틴 별 추천 성분'이라고 말하고, 옆에는 🫧 이 아이콘을, 
 '추가 팁'이라는 말 '대신 맞춤형 피부 관리 팁'이라고 말하고, 옆에는 💡 이 아이콘을 써줘. 
 """
@@ -23,6 +23,14 @@ model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=system_inst
 # Streamlit 앱 초기화
 st.title("SKINCARE BOT")
 st.write("피부 고민에 대해 이야기하고, 맞춤형 피부관리 팁과 성분을 추천받아보세요!")
+
+# ---- 매개변수 설정 및 설명 ----
+st.sidebar.title("Generative AI 매개변수 설정")
+
+# temperature: 출력의 무작위성 조정. 낮은 값(예: 0.2)은 보수적인 응답, 높은 값(예: 1.5)은 창의적 응답을 유도.
+temperature = st.sidebar.slider(
+    "출력의 무작위성을 제어 (temperature)", 0.0, 2.0, 1.0, step=0.1
+)
 
 # 대화 세션 및 기록 관리
 if "chat_session" not in st.session_state:
