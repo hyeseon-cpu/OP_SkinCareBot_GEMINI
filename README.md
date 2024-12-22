@@ -68,7 +68,7 @@ pip install -r requirements.txt
 4.	매개변수 조정:
 	•	사이드바에서 AI의 응답 생성 매개변수를 조정할 수 있습니다:
 	•	temperature: 응답의 창의성을 조정 (0.0 ~ 2.0).
-5.	네이버 쇼핑 결과 확인:
+~~5.	네이버 쇼핑 결과 확인:~~
 	•	AI가 추천한 성분과 관련된 제품 정보를 네이버 쇼핑에서 가져옵니다.
 
 ## 매개변수 설명
@@ -99,3 +99,4 @@ temperature	출력의 무작위성 조정. 낮은 값은 보수적이고 높은 
 적당히 사용자에대한 정보가 수집되었다고 판단한 carebot은 사용자에게 맞는 피부 관리 팁과 성분을 추천해줍니다. 
 <img width="1512" alt="스크린샷 2024-12-22 오후 9 06 37" src="https://github.com/user-attachments/assets/d41c786f-3d58-484c-a63b-180c40a687cf" />
 <img width="1510" alt="스크린샷 2024-12-22 오후 9 06 41" src="https://github.com/user-attachments/assets/f2b4fd09-8323-45aa-b113-beee96f2292e" />
+~~네이버 크롤링은 아직 어려운 부분입니다...~~
